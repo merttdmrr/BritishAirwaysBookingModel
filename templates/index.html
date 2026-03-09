@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>British Airways – Rezervasyon Tamamlanma Tahmini</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ba: {
+              navy:  '#003366',
+              blue:  '#00509E',
+              light: '#E8EFF8',
+              gold:  '#C4930A',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Smooth scroll & custom scrollbar */
+    html { scroll-behavior: smooth; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #003366; border-radius: 3px; }
+
+    /* Input focus ring */
+    .ba-input:focus {
+      outline: none;
+      border-color: #003366;
+      box-shadow: 0 0 0 3px rgba(0,51,102,.15);
+    }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin .8s linear infinite; }
+
+    /* Result card animation */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-result { animation: fadeSlideUp .4s ease forwards; }
+
+    /* Progress bar */
+    @keyframes fillBar { from { width: 0; } }
+    .fill-bar { animation: fillBar .9s ease forwards; }
+
+    /* Route dropdown hover */
+    #route_dropdown > div:hover { background-color: #E8EFF8; }
+
+    /* Toggle checkbox */
+    .toggle-checkbox:checked + .toggle-label { background-color: #003366; }
+    .toggle-checkbox:checked + .toggle-label::after { transform: translateX(1.5rem); }
+    .toggle-label { transition: background-color .2s; }
+    .toggle-label::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 20px; height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform .2s;
+    }
+
+
+
+    /* Floating clouds */
+    @keyframes floatCloud {
+      0%   { transform: translateX(-100px); opacity: 0; }
+      5%   { opacity: 0.06; }
+      95%  { opacity: 0.06; }
+      100% { transform: translateX(calc(100vw + 100px)); opacity: 0; }
+    }
+    .cloud {
+      position: fixed;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0;
+    }
+    .cloud-1 { top: 120px; animation: floatCloud 35s linear 0s infinite; }
+    .cloud-2 { top: 250px; animation: floatCloud 45s linear 10s infinite; }
+    .cloud-3 { top: 500px; animation: floatCloud 40s linear 20s infinite; }
+
+    /* KPI card icon containers */
+    .kpi-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 8px;
+      transition: transform 0.2s;
+    }
+    .kpi-card:hover .kpi-icon { transform: scale(1.1) rotate(-3deg); }
+
+    /* Section header icon pulse */
+    .section-icon {
+      transition: transform 0.2s;
+    }
+    .section-header:hover .section-icon {
+      transform: scale(1.15);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans text-slate-800">
+
+  <!-- ── Floating Clouds (subtle bg decoration) ── -->
+  <svg class="cloud cloud-1" width="120" height="40" viewBox="0 0 120 40" fill="none"><ellipse cx="60" cy="25" rx="55" ry="15" fill="#003366" opacity="0.04"/><ellipse cx="40" cy="20" rx="30" ry="12" fill="#003366" opacity="0.03"/><ellipse cx="85" cy="22" rx="25" ry="10" fill="#003366" opacity="0.03"/></svg>
+  <svg class="cloud cloud-2" width="90" height="30" viewBox="0 0 90 30" fill="none"><ellipse cx="45" cy="18" rx="40" ry="12" fill="#003366" opacity="0.04"/><ellipse cx="30" cy="15" rx="22" ry="9" fill="#003366" opacity="0.03"/></svg>
+  <svg class="cloud cloud-3" width="100" height="35" viewBox="0 0 100 35" fill="none"><ellipse cx="50" cy="20" rx="45" ry="14" fill="#003366" opacity="0.04"/><ellipse cx="70" cy="18" rx="28" ry="10" fill="#003366" opacity="0.03"/></svg>
+
+  <!-- ── HEADER ── -->
+  <header class="bg-ba-navy shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
+      <!-- BA Logo mark -->
+      <svg class="w-10 h-10 flex-shrink-0" viewBox="0 0 40 40" fill="none">
+        <rect width="40" height="40" rx="4" fill="#003366"/>
+        <path d="M6 20C6 12.268 12.268 6 20 6s14 6.268 14 14-6.268 14-14 14S6 27.732 6 20z" fill="#003366"/>
+        <path d="M8 20.5h24M20 8v24" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        <ellipse cx="20" cy="20" rx="8" ry="12" stroke="white" stroke-width="1.5" fill="none"/>
+        <ellipse cx="20" cy="20" rx="14" ry="14" stroke="white" stroke-width="1.5" fill="none"/>
+      </svg>
+      <div>
+        <p class="text-white/60 text-xs font-medium tracking-widest uppercase">British Airways</p>
+        <h1 class="text-white text-lg sm:text-xl font-bold leading-tight">
+          Rezervasyon Tamamlanma Tahmini
+        </h1>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── MAIN ── -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+
+    <!-- Intro banner -->
+    <div class="bg-ba-light border-l-4 border-ba-navy rounded-r-lg px-5 py-4 flex gap-3 items-start">
+      <svg class="w-5 h-5 text-ba-navy mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1 4a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 000-2v-3a1 1 0 00-1-1H10z" clip-rule="evenodd"/>
+      </svg>
+      <p class="text-sm text-ba-navy">
+        Makine öğrenmesi modelimiz; yolcu bilgileri, uçuş detayları ve tercihler doğrultusunda
+        rezervasyonun tamamlanma olasılığını tahmin eder.
+      </p>
+    </div>
+
+    <!-- ── TAB NAVIGATION ── -->
+    <div class="flex gap-2 bg-white rounded-xl p-1.5 shadow-sm border border-slate-200">
+      <button data-tab="predictionTab" class="flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all duration-200 bg-ba-navy text-white shadow-md flex items-center justify-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        Tahmin
+      </button>
+      <button data-tab="dashboardTab" class="flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all duration-200 bg-white text-slate-600 flex items-center justify-center gap-2 hover:bg-slate-50">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+        Dashboard & Analitik
+      </button>
+    </div>
+
+    <!-- ── PREDICTION TAB ── -->
+    <div id="predictionTab" class="tab-content space-y-8">
+
+    <!-- ── FORM CARD ── -->
+    <form id="predictForm" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+
+      <!-- Section: Yolcu & Satış -->
+      <div class="bg-ba-navy/5 border-b border-slate-200 px-6 py-3 flex items-center gap-2">
+        <svg class="w-4 h-4 text-ba-navy" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zm5 2a2 2 0 11-4 0 2 2 0 014 0zm-2 7a4 4 0 00-8 0H4a6 6 0 0112 0h-2zM2 15a4 4 0 018 0H8a2 2 0 00-4 0H2z"/>
+        </svg>
+        <h2 class="font-semibold text-ba-navy text-sm uppercase tracking-wider">Yolcu &amp; Satış Bilgileri</h2>
+      </div>
+
+      <div class="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+        <!-- Yolcu Sayısı -->
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Yolcu Sayısı</label>
+          <input id="num_passengers" type="number" min="1" max="50" value="1"
+            class="ba-input w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white transition" />
+          <p class="text-xs text-slate-400">Toplam yolcu adedi</p>
+        </div>
+
+        <!-- Satış Kanalı -->
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Satış Kanalı</label>
+          <select id="sales_channel" class="ba-input w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white transition appearance-none">
+            <option value="Internet">İnternet</option>
+            <option value="Mobile">Mobil</option>
+          </select>
+        </div>
+
+        <!-- Seyahat Tipi -->
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Seyahat Tipi</label>
+          <select id="trip_type" class="ba-input w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white transition appearance-none">
+            <option value="RoundTrip">Gidiş-Dönüş</option>
+            <option value="OneWay">Tek Yön</option>
+            <option value="CircleTrip">Çok Duraklı</option>
+          </select>
+        </div>
+
+        <!-- Satın Alma Süresi -->
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Erken Satın Alma (gün)</label>
+          <input id="purchase_lead" type="number" min="0" max="1000" value="30"
+            class="ba-input w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white transition" />
+          <p class="text-xs text-slate-400">Uçuştan kaç gün önce satın alındı</p>
+        </div>
+
+        <!-- Konaklama Süresi -->
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Konaklama Süresi (gün)</label>
+          <input id="length_of_stay" type="number" min="0" max="365" value="7"
+            class="ba-input w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white transition" />
+          <p class="text-xs text-slate-400">Destinasyonda kalınacak gün sayısı</p>
+        </div>
+
+        <!-- Rezervasyon Kökeni -->
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Rezervasyon Kökeni</label>
+          <select id="booking_origin" class="ba-input w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white transition appearance-none">
+            <option value="Afghanistan">Afghanistan</option>
+            <option value="Algeria">Algeria</option>
+            <option value="Argentina">Argentina</option>
+            <option value="Australia">Australia</option>
+            <option value="Austria">Austria</option>
+            <option value="Bahrain">Bahrain</option>
+            <option value="Bangladesh">Bangladesh</option>
+            <option value="Belarus">Belarus</option>
+            <option value="Belgium">Belgium</option>
+            <option value="Bhutan">Bhutan</option>
+            <option value="Brazil">Brazil</option>
+            <option value="Brunei">Brunei</option>
+            <option value="Bulgaria">Bulgaria</option>
+            <option value="Cambodia">Cambodia</option>
+            <option value="Canada">Canada</option>
+            <option value="Chile">Chile</option>
+            <option value="China">China</option>
+            <option value="Colombia">Colombia</option>
+            <option value="Croatia">Croatia</option>
+            <option value="Cyprus">Cyprus</option>
+            <option value="Czech Republic">Czech Republic</option>
+            <option value="Czechia">Czechia</option>
+            <option value="Denmark">Denmark</option>
+            <option value="Egypt">Egypt</option>
+            <option value="Estonia">Estonia</option>
+            <option value="Finland">Finland</option>
+            <option value="France">France</option>
+            <option value="Germany">Germany</option>
+            <option value="Ghana">Ghana</option>
+            <option value="Gibraltar">Gibraltar</option>
+            <option value="Greece">Greece</option>
+            <option value="Guam">Guam</option>
+            <option value="Guatemala">Guatemala</option>
+            <option value="Hong Kong">Hong Kong</option>
+            <option value="Hungary">Hungary</option>
+            <option value="India">India</option>
+            <option value="Indonesia">Indonesia</option>
+            <option value="Iran">Iran</option>
+            <option value="Iraq">Iraq</option>
+            <option value="Ireland">Ireland</option>
+            <option value="Israel">Israel</option>
+            <option value="Italy">Italy</option>
+            <option value="Japan">Japan</option>
+            <option value="Jordan">Jordan</option>
+            <option value="Kazakhstan">Kazakhstan</option>
+            <option value="Kenya">Kenya</option>
+            <option value="Kuwait">Kuwait</option>
+            <option value="Laos">Laos</option>
+            <option value="Lebanon">Lebanon</option>
+            <option value="Macau">Macau</option>
+            <option value="Malaysia">Malaysia</option>
+            <option value="Maldives">Maldives</option>
+            <option value="Malta">Malta</option>
+            <option value="Mauritius">Mauritius</option>
+            <option value="Mexico">Mexico</option>
+            <option value="Mongolia">Mongolia</option>
+            <option value="Myanmar (Burma)">Myanmar (Burma)</option>
+            <option value="Nepal">Nepal</option>
+            <option value="Netherlands">Netherlands</option>
+            <option value="New Caledonia">New Caledonia</option>
+            <option value="New Zealand">New Zealand</option>
+            <option value="Nicaragua">Nicaragua</option>
+            <option value="Norfolk Island">Norfolk Island</option>
+            <option value="Norway">Norway</option>
+            <option value="Oman">Oman</option>
+            <option value="Pakistan">Pakistan</option>
+            <option value="Panama">Panama</option>
+            <option value="Papua New Guinea">Papua New Guinea</option>
+            <option value="Paraguay">Paraguay</option>
+            <option value="Peru">Peru</option>
+            <option value="Philippines">Philippines</option>
+            <option value="Poland">Poland</option>
+            <option value="Portugal">Portugal</option>
+            <option value="Qatar">Qatar</option>
+            <option value="Romania">Romania</option>
+            <option value="Russia">Russia</option>
+            <option value="Réunion">Réunion</option>
+            <option value="Saudi Arabia">Saudi Arabia</option>
+            <option value="Seychelles">Seychelles</option>
+            <option value="Singapore">Singapore</option>
+            <option value="Slovakia">Slovakia</option>
+            <option value="Slovenia">Slovenia</option>
+            <option value="Solomon Islands">Solomon Islands</option>
+            <option value="South Africa">South Africa</option>
+            <option value="South Korea">South Korea</option>
+            <option value="Spain">Spain</option>
+            <option value="Sri Lanka">Sri Lanka</option>
+            <option value="Svalbard &amp; Jan Mayen">Svalbard &amp; Jan Mayen</option>
+            <option value="Sweden">Sweden</option>
+            <option value="Switzerland">Switzerland</option>
+            <option value="Taiwan">Taiwan</option>
+            <option value="Tanzania">Tanzania</option>
+            <option value="Thailand">Thailand</option>
+            <option value="Timor-Leste">Timor-Leste</option>
+            <option value="Tonga">Tonga</option>
+            <option value="Tunisia">Tunisia</option>
+            <option value="Turkey">Turkey</option>
+            <option value="Ukraine">Ukraine</option>
+            <option value="United Arab Emirates">United Arab Emirates</option>
+            <option value="United Kingdom" selected>United Kingdom</option>
+            <option value="United States">United States</option>
+            <option value="Vanuatu">Vanuatu</option>
+            <option value="Vietnam">Vietnam</option>
+          </select>
+          <p class="text-xs text-slate-400">Rezervasyonun gerçekleştirildiği ülke</p>
+        </div>
+
+      </div>
+
+      <!-- Section: Uçuş Detayları -->
+      <div class="bg-ba-navy/5 border-y border-slate-200 px-6 py-3 flex items-center gap-2">
+        <svg class="w-4 h-4 text-ba-navy" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
+        </svg>
+        <h2 class="font-semibold text-ba-navy text-sm uppercase tracking-wider">Uçuş Detayları</h2>
+      </div>
+
+      <div class="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+        <!-- Uçuş Saati -->
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Uçuş Saati</label>
+          <input id="flight_hour" type="number" min="0" max="23" value="10"
+            class="ba-input w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white transition" />
+          <p class="text-xs text-slate-400">0–23 arası (24 saat formatı)</p>
+        </div>
+
+        <!-- Uçuş Günü -->
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Uçuş Günü</label>
+          <select id="flight_day" class="ba-input w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white transition appearance-none">
+            <option value="Mon">Pazartesi</option>
+            <option value="Tue">Salı</option>
+            <option value="Wed">Çarşamba</option>
+            <option value="Thu">Perşembe</option>
+            <option value="Fri">Cuma</option>
+            <option value="Sat">Cumartesi</option>
+            <option value="Sun">Pazar</option>
+          </select>
+        </div>
+
+        <!-- Uçuş Süresi -->
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Uçuş Süresi (saat)</label>
+          <input id="flight_duration" type="number" min="0.1" max="24" step="0.1" value="3.5"
+            class="ba-input w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white transition" />
+          <p class="text-xs text-slate-400">Örn: 3.5 → 3 saat 30 dk</p>
+        </div>
+
+        <!-- Rota -->
+        <div class="flex flex-col gap-1 sm:col-span-2 lg:col-span-1 relative">
+          <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Uçuş Rotası</label>
+          <div class="relative">
+            <input id="route_input" type="text" placeholder="Ara: LHRIST, MEL, SYD…" autocomplete="off"
+              class="ba-input w-full border border-slate-300 rounded-lg pl-3 pr-8 py-2.5 text-sm bg-white transition font-mono uppercase tracking-wider" />
+            <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+            </svg>
+          </div>
+          <!-- Dropdown list -->
+          <div id="route_dropdown"
+            class="hidden absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
+          </div>
+          <input type="hidden" id="route_value" />
+          <p id="route_hint" class="text-xs text-slate-400">Kod veya havalimanı adı yazın (799 rota)</p>
+        </div>
+
+      </div>
+
+      <!-- Section: Ek Tercihler -->
+      <div class="bg-ba-navy/5 border-y border-slate-200 px-6 py-3 flex items-center gap-2">
+        <svg class="w-4 h-4 text-ba-navy" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
+        </svg>
+        <h2 class="font-semibold text-ba-navy text-sm uppercase tracking-wider">Ek Tercihler</h2>
+      </div>
+
+      <div class="px-6 py-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
+
+        <!-- Extra Bagaj -->
+        <label class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 cursor-pointer hover:border-ba-navy/40 transition group">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">🧳</span>
+            <div>
+              <p class="font-medium text-sm text-slate-700">Ekstra Bagaj</p>
+              <p class="text-xs text-slate-400">Ek bagaj hakkı</p>
+            </div>
+          </div>
+          <div class="relative">
+            <input type="checkbox" id="wants_extra_baggage" class="toggle-checkbox sr-only" />
+            <div class="toggle-label relative w-12 h-6 bg-slate-300 rounded-full cursor-pointer"></div>
+          </div>
+        </label>
+
+        <!-- Tercihli Koltuk -->
+        <label class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 cursor-pointer hover:border-ba-navy/40 transition group">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">💺</span>
+            <div>
+              <p class="font-medium text-sm text-slate-700">Tercihli Koltuk</p>
+              <p class="text-xs text-slate-400">Özel koltuk seçimi</p>
+            </div>
+          </div>
+          <div class="relative">
+            <input type="checkbox" id="wants_preferred_seat" class="toggle-checkbox sr-only" />
+            <div class="toggle-label relative w-12 h-6 bg-slate-300 rounded-full cursor-pointer"></div>
+          </div>
+        </label>
+
+        <!-- Uçak İçi Yemek -->
+        <label class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 cursor-pointer hover:border-ba-navy/40 transition group">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">🍽️</span>
+            <div>
+              <p class="font-medium text-sm text-slate-700">Uçak İçi Yemek</p>
+              <p class="text-xs text-slate-400">Özel yemek servisi</p>
+            </div>
+          </div>
+          <div class="relative">
+            <input type="checkbox" id="wants_in_flight_meals" class="toggle-checkbox sr-only" />
+            <div class="toggle-label relative w-12 h-6 bg-slate-300 rounded-full cursor-pointer"></div>
+          </div>
+        </label>
+
+      </div>
+
+      <!-- Submit Button -->
+      <div class="px-6 pb-6">
+        <button id="submitBtn" type="submit"
+          class="w-full bg-ba-navy hover:bg-ba-blue active:scale-[.98] text-white font-semibold py-3.5 rounded-xl transition-all duration-150 flex items-center justify-center gap-2 shadow-md hover:shadow-lg">
+          <svg id="btnIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 5l7 7-7 7"/>
+          </svg>
+          <span id="btnText">Tahmin Et</span>
+        </button>
+      </div>
+
+    </form>
+
+    <!-- ── ERROR ALERT ── -->
+    <div id="errorBox" class="hidden bg-red-50 border border-red-300 rounded-xl px-5 py-4 flex gap-3 items-start">
+      <svg class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+      </svg>
+      <div>
+        <p class="font-semibold text-red-700 text-sm">Bir hata oluştu</p>
+        <p id="errorMsg" class="text-red-600 text-sm mt-0.5"></p>
+      </div>
+    </div>
+
+    <!-- ── RESULT CARD ── -->
+    <div id="resultCard" class="hidden animate-result bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+
+      <div id="resultHeader" class="px-6 py-5 flex items-center gap-4">
+        <div id="resultIcon" class="w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0"></div>
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Tahmin Sonucu</p>
+          <h3 id="resultTitle" class="text-xl font-bold leading-tight"></h3>
+          <p id="resultMsg" class="text-sm text-slate-500 mt-0.5"></p>
+        </div>
+      </div>
+
+      <!-- Probability Bar -->
+      <div class="px-6 pb-6">
+        <div class="flex justify-between items-center mb-2">
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tamamlanma Olasılığı</p>
+          <p id="probText" class="text-lg font-bold text-ba-navy"></p>
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-4 overflow-hidden">
+          <div id="probBar" class="fill-bar h-4 rounded-full transition-all"></div>
+        </div>
+        <!-- Threshold markers -->
+        <div class="relative w-full mt-1">
+          <span class="absolute left-[50%] text-[10px] text-slate-400 -translate-x-1/2">50%</span>
+          <span class="absolute left-[75%] text-[10px] text-slate-400 -translate-x-1/2">75%</span>
+        </div>
+      </div>
+
+      <!-- Stats grid -->
+      <div class="border-t border-slate-100 grid grid-cols-3 divide-x divide-slate-100">
+        <div class="px-5 py-4 text-center">
+          <p class="text-xs text-slate-400 font-medium">Karar</p>
+          <p id="statDecision" class="text-sm font-bold mt-1"></p>
+        </div>
+        <div class="px-5 py-4 text-center">
+          <p class="text-xs text-slate-400 font-medium">Olasılık</p>
+          <p id="statProb" class="text-sm font-bold text-ba-navy mt-1"></p>
+        </div>
+        <div class="px-5 py-4 text-center">
+          <p class="text-xs text-slate-400 font-medium">Güven</p>
+          <p id="statConf" class="text-sm font-bold mt-1"></p>
+        </div>
+      </div>
+
+    </div>
+
+    </div><!-- end predictionTab -->
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- ── DASHBOARD TAB ── -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div id="dashboardTab" class="tab-content hidden space-y-6">
+
+      <!-- KPI Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div class="kpi-card bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm hover:shadow-md transition">
+          <div class="kpi-icon bg-ba-navy/10"><svg class="w-5 h-5 text-ba-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 4 4 5 4 7z"/><path stroke-linecap="round" stroke-width="2" d="M9 12h6M9 8h6M9 16h3"/></svg></div>
+          <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Toplam Kayıt</p><p id="kpi-total" class="text-2xl font-bold text-ba-navy mt-1">—</p>
+        </div>
+        <div class="kpi-card bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm hover:shadow-md transition">
+          <div class="kpi-icon bg-emerald-50"><svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+          <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Tamamlanma</p><p id="kpi-rate" class="text-2xl font-bold text-emerald-600 mt-1">—</p>
+        </div>
+        <div class="kpi-card bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm hover:shadow-md transition">
+          <div class="kpi-icon bg-blue-50"><svg class="w-5 h-5 text-ba-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg></div>
+          <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Ort. Konaklama</p><p id="kpi-stay" class="text-2xl font-bold text-ba-blue mt-1">—</p>
+        </div>
+        <div class="kpi-card bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm hover:shadow-md transition">
+          <div class="kpi-icon bg-blue-50"><svg class="w-5 h-5 text-ba-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+          <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Ort. Erken Alım</p><p id="kpi-lead" class="text-2xl font-bold text-ba-blue mt-1">—</p>
+        </div>
+        <div class="kpi-card bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm hover:shadow-md transition">
+          <div class="kpi-icon bg-amber-50"><svg class="w-5 h-5 text-ba-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+          <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Ort. Uçuş Süresi</p><p id="kpi-duration" class="text-2xl font-bold text-ba-gold mt-1">—</p>
+        </div>
+        <div class="kpi-card bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm hover:shadow-md transition">
+          <div class="kpi-icon bg-amber-50"><svg class="w-5 h-5 text-ba-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
+          <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Ort. Yolcu</p><p id="kpi-passengers" class="text-2xl font-bold text-ba-gold mt-1">—</p>
+        </div>
+      </div>
+
+      <!-- Feature Importance -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-ba-navy/5 border-b border-slate-200 px-6 py-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-ba-navy" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11 4a1 1 0 10-2 0v4a1 1 0 102 0V7zm-3 1a1 1 0 10-2 0v3a1 1 0 102 0V8zM8 9a1 1 0 00-2 0v2a1 1 0 102 0V9z" clip-rule="evenodd"/></svg>
+          <h2 class="font-semibold text-ba-navy text-sm uppercase tracking-wider">Feature Importance — Model Özellik Önem Sıralaması</h2>
+        </div>
+        <div class="p-6" style="height:420px"><canvas id="fiChart"></canvas></div>
+      </div>
+
+      <!-- Charts Grid Row 1 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="section-header bg-ba-navy/5 border-b border-slate-200 px-6 py-3 flex items-center gap-2"><svg class="section-icon w-4 h-4 text-ba-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/></svg><h2 class="font-semibold text-ba-navy text-sm uppercase tracking-wider">Satış Kanalı Dağılımı</h2></div>
+          <div class="p-6 flex justify-center" style="height:300px"><canvas id="channelChart"></canvas></div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="section-header bg-ba-navy/5 border-b border-slate-200 px-6 py-3 flex items-center gap-2"><svg class="section-icon w-4 h-4 text-ba-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg><h2 class="font-semibold text-ba-navy text-sm uppercase tracking-wider">Seyahat Tipi Dağılımı</h2></div>
+          <div class="p-6 flex justify-center" style="height:300px"><canvas id="tripChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Charts Grid Row 2 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="section-header bg-ba-navy/5 border-b border-slate-200 px-6 py-3 flex items-center gap-2"><svg class="section-icon w-4 h-4 text-ba-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg><h2 class="font-semibold text-ba-navy text-sm uppercase tracking-wider">Günlere Göre Tamamlanma Oranı</h2></div>
+          <div class="p-6" style="height:300px"><canvas id="dayChart"></canvas></div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="section-header bg-ba-navy/5 border-b border-slate-200 px-6 py-3 flex items-center gap-2"><svg class="section-icon w-4 h-4 text-ba-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><h2 class="font-semibold text-ba-navy text-sm uppercase tracking-wider">Saatlere Göre Tamamlanma Oranı</h2></div>
+          <div class="p-6" style="height:300px"><canvas id="hourChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Charts Grid Row 3 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="section-header bg-ba-navy/5 border-b border-slate-200 px-6 py-3 flex items-center gap-2"><svg class="section-icon w-4 h-4 text-ba-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg><h2 class="font-semibold text-ba-navy text-sm uppercase tracking-wider">En Popüler 10 Rota</h2></div>
+          <div class="p-6" style="height:360px"><canvas id="routeChart"></canvas></div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="section-header bg-ba-navy/5 border-b border-slate-200 px-6 py-3 flex items-center gap-2"><svg class="section-icon w-4 h-4 text-ba-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><h2 class="font-semibold text-ba-navy text-sm uppercase tracking-wider">En Popüler 10 Ülke</h2></div>
+          <div class="p-6" style="height:360px"><canvas id="countryChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Cohort Analysis -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-ba-navy/5 border-b border-slate-200 px-6 py-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-ba-navy" fill="currentColor" viewBox="0 0 20 20"><path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"/><path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"/></svg>
+          <h2 class="font-semibold text-ba-navy text-sm uppercase tracking-wider">Kohort Analizi — Kanal × Seyahat Tipi</h2>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead><tr class="bg-slate-50">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Kanal</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase">CircleTrip</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase">OneWay</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase">RoundTrip</th>
+            </tr></thead>
+            <tbody id="cohortBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Extras Comparison -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="section-header bg-ba-navy/5 border-b border-slate-200 px-6 py-3 flex items-center gap-2">
+          <svg class="section-icon w-4 h-4 text-ba-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+          <h2 class="font-semibold text-ba-navy text-sm uppercase tracking-wider">Ek Hizmet Tercihi × Tamamlanma Oranı</h2>
+        </div>
+        <div class="p-6" style="height:300px"><canvas id="extrasChart"></canvas></div>
+      </div>
+
+      <!-- Real-Time Metrics -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-ba-navy/5 border-b border-slate-200 px-6 py-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-ba-navy" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+          <h2 class="font-semibold text-ba-navy text-sm uppercase tracking-wider">Gerçek Zamanlı Tahmin Metrikleri</h2>
+          <span class="ml-auto flex items-center gap-1.5 text-xs text-emerald-600"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>Canlı</span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-slate-100">
+          <div class="p-5 text-center"><p class="text-[10px] font-semibold text-slate-400 uppercase">Toplam Tahmin</p><p id="lm-total" class="text-2xl font-bold text-ba-navy mt-1">0</p></div>
+          <div class="p-5 text-center"><p class="text-[10px] font-semibold text-slate-400 uppercase">Tamamlanma %</p><p id="lm-rate" class="text-2xl font-bold text-emerald-600 mt-1">%0</p></div>
+          <div class="p-5 text-center"><p class="text-[10px] font-semibold text-slate-400 uppercase">Ort. Olasılık</p><p id="lm-avg" class="text-2xl font-bold text-ba-blue mt-1">%0</p></div>
+          <div class="p-5 text-center"><p class="text-[10px] font-semibold text-slate-400 uppercase">Top Rota</p><p id="lm-route" class="text-lg font-bold text-ba-gold mt-1 font-mono">-</p></div>
+          <div class="p-5 text-center"><p class="text-[10px] font-semibold text-slate-400 uppercase">Tamamlanan</p><p id="lm-yes" class="text-2xl font-bold text-emerald-600 mt-1">0</p></div>
+          <div class="p-5 text-center"><p class="text-[10px] font-semibold text-slate-400 uppercase">Tamamlanmayan</p><p id="lm-no" class="text-2xl font-bold text-red-500 mt-1">0</p></div>
+        </div>
+      </div>
+
+      <!-- Recent Predictions -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-ba-navy/5 border-b border-slate-200 px-6 py-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-ba-navy" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg>
+          <h2 class="font-semibold text-ba-navy text-sm uppercase tracking-wider">Son Tahminler</h2>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead><tr class="bg-slate-50">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Saat</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Rota</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Ülke</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Detay</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Olasılık</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Sonuç</th>
+            </tr></thead>
+            <tbody id="predBody"><tr><td colspan="6" class="text-center py-8 text-slate-400 text-sm">Henüz tahmin yapılmadı</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- end dashboardTab -->
+
+  </main>
+
+  <!-- ── FOOTER ── -->
+  <footer class="mt-12 border-t border-slate-200 bg-white">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
+      <span>© 2026 British Airways — Rezervasyon Tahmin Sistemi</span>
+      <span class="flex items-center gap-3">
+        <span>Model: <span class="font-medium text-slate-600">RandomForestClassifier</span></span>
+        <span class="text-slate-300">·</span>
+        <span>Hazırlayan: <span class="font-medium text-slate-600">Mert Can Demir</span></span>
+      </span>
+    </div>
+  </footer>
+
+  <script>
+    /* ── ROUTE DATA (799 rotanın tamamı) ── */
+    const ALL_ROUTES = ["AKLDEL","AKLHGH","AKLHND","AKLICN","AKLKIX","AKLKTM","AKLKUL","AKLMRU","AKLPEK","AKLPVG","AKLTPE","AORICN","AORKIX","AORKTM","AORMEL","AORPER","AORPUS","BBIMEL","BBIOOL","BBIPER","BBISYD","BDOCTS","BDOCTU","BDOHGH","BDOICN","BDOIKA","BDOKIX","BDOMEL","BDOOOL","BDOPEK","BDOPER","BDOPUS","BDOPVG","BDOSYD","BDOTPE","BDOWUH","BDOXIY","BKICKG","BKICTS","BKICTU","BKIDEL","BKIHND","BKIICN","BKIKIX","BKIKTM","BKIMEL","BKIMRU","BKIOOL","BKIPEK","BKIPER","BKIPUS","BKIPVG","BKISYD","BKIXIY","BLRICN","BLRMEL","BLRPER","BLRSYD","BOMMEL","BOMOOL","BOMPER","BOMSYD","BTJJED","BTUCKG","BTUICN","BTUPER","BTUSYD","BTUWUH","BWNCKG","BWNDEL","BWNHGH","BWNIKA","BWNKTM","BWNMEL","BWNOOL","BWNPER","BWNSYD","BWNTPE","BWNWUH","CANDEL","CANIKA","CANMEL","CANMRU","CANOOL","CANPER","CANSYD","CCUMEL","CCUMRU","CCUOOL","CCUPER","CCUSYD","CCUTPE","CEBMEL","CEBOOL","CEBPER","CEBSYD","CGKCKG","CGKCTS","CGKCTU","CGKDEL","CGKHGH","CGKHND","CGKICN","CGKIKA","CGKJED","CGKKIX","CGKKTM","CGKMEL","CGKMRU","CGKOOL","CGKPEK","CGKPER","CGKPUS","CGKPVG","CGKSYD","CGKTPE","CGKWUH","CGKXIY","CKGCOK","CKGDPS","CKGHKT","CKGJHB","CKGKCH","CKGKNO","CKGLGK","CKGLOP","CKGMAA","CKGMEL","CKGMRU","CKGMYY","CKGOOL","CKGPEN","CKGPER","CKGPNH","CKGSBW","CKGSGN","CKGSIN","CKGSUB","CKGSYD","CKGTGG","CKGTRZ","CKGTWU","CMBCTS","CMBCTU","CMBHGH","CMBHND","CMBICN","CMBKIX","CMBMEL","CMBMRU","CMBOOL","CMBPEK","CMBPER","CMBPVG","CMBSYD","CMBWUH","CNXDEL","CNXHND","CNXICN","CNXKIX","CNXMEL","CNXOOL","CNXPEK","CNXPER","CNXPUS","CNXPVG","CNXSYD","CNXTPE","CNXXIY","COKCTS","COKCTU","COKHGH","COKICN","COKKIX","COKMEL","COKOOL","COKPER","COKPUS","COKSYD","COKTPE","COKWUH","CRKMEL","CRKOOL","CRKSYD","CSXMRU","CSXPER","CSXSYD","CTSDMK","CTSDPS","CTSHKT","CTSJHB","CTSJOG","CTSKBR","CTSKCH","CTSKNO","CTSLGK","CTSMEL","CTSMYY","CTSOOL","CTSPEN","CTSPER","CTSSBW","CTSSGN","CTSSIN","CTSSUB","CTSSYD","CTUDMK","CTUDPS","CTUHKT","CTUIKA","CTUJHB","CTUKBR","CTUKBV","CTUKCH","CTUKNO","CTULGK","CTULOP","CTUMAA","CTUMEL","CTUMLE","CTUMRU","CTUMYY","CTUOOL","CTUPEN","CTUPER","CTUREP","CTUSBW","CTUSGN","CTUSIN","CTUSRG","CTUSUB","CTUSYD","CTUTGG","CTUTRZ","CTUTWU","CTUURT","CXRMEL","DACHGH","DACHND","DACICN","DACKIX","DACMEL","DACMRU","DACOOL","DACPEK","DACPER","DACPUS","DACSYD","DACTPE","DADMEL","DADOOL","DADSYD","DELDMK","DELDPS","DELHKG","DELHKT","DELHND","DELJHB","DELJOG","DELKBR","DELKBV","DELKCH","DELKIX","DELKNO","DELLGK","DELMEL","DELMFM","DELMNL","DELMRU","DELMYY","DELOOL","DELPEN","DELPER","DELPNH","DELREP","DELRGN","DELSBW","DELSGN","DELSIN","DELSUB","DELSYD","DELSZX","DELURT","DMKHGH","DMKHND","DMKICN","DMKIKA","DMKKIX","DMKKTM","DMKMEL","DMKMRU","DMKOOL","DMKPEK","DMKPER","DMKPUS","DMKPVG","DMKSYD","DMKTPE","DPSHGH","DPSHND","DPSICN","DPSIKA","DPSKIX","DPSKTM","DPSMEL","DPSMRU","DPSOOL","DPSPEK","DPSPUS","DPSPVG","DPSSYD","DPSTPE","DPSWUH","DPSXIY","GOIKUL","GOIMEL","GOIOOL","GOIPER","GOISYD","HANKTM","HANMEL","HANOOL","HANPER","HANSYD","HDYHGH","HDYKIX","HDYKTM","HDYMEL","HDYOOL","HDYPEK","HDYPER","HDYPVG","HDYSYD","HDYTPE","HDYXIY","HGHHKT","HGHJHB","HGHJOG","HGHKBR","HGHKBV","HGHKCH","HGHKNO","HGHLGK","HGHLOP","HGHMAA","HGHMEL","HGHMRU","HGHMYY","HGHOOL","HGHPEN","HGHPER","HGHSBW","HGHSGN","HGHSIN","HGHSUB","HGHSYD","HGHTGG","HGHTRZ","HGHTWU","HKGIKA","HKGJED","HKGKTM","HKGMEL","HKGMRU","HKGOOL","HKGPER","HKGSYD","HKTHND","HKTICN","HKTIKA","HKTJED","HKTKIX","HKTKTM","HKTMEL","HKTMRU","HKTOOL","HKTPEK","HKTPER","HKTPUS","HKTPVG","HKTSYD","HKTTPE","HKTWUH","HKTXIY","HNDIKA","HNDJOG","HNDKBR","HNDKBV","HNDKCH","HNDKNO","HNDKTM","HNDLGK","HNDLOP","HNDMAA","HNDMEL","HNDMLE","HNDOOL","HNDPEN","HNDPER","HNDPNH","HNDREP","HNDRGN","HNDSBW","HNDSGN","HNDSIN","HNDSUB","HNDSYD","HNDTRZ","HYDMEL","HYDMRU","HYDOOL","HYDPER","HYDSYD","HYDWUH","ICNIKA","ICNJED","ICNJHB","ICNKBR","ICNKBV","ICNKCH","ICNKNO","ICNKTM","ICNLGK","ICNMAA","ICNMEL","ICNMLE","ICNMRU","ICNMYY","ICNOOL","ICNPEN","ICNPER","ICNREP","ICNRGN","ICNSBW","ICNSDK","ICNSGN","ICNSIN","ICNSUB","ICNSYD","ICNTGG","ICNTRZ","ICNVTE","ICNVTZ","IKAKCH","IKAKIX","IKALOP","IKAMEL","IKAMFM","IKAMNL","IKAOOL","IKAPEK","IKAPEN","IKAPER","IKAPUS","IKAPVG","IKASGN","IKASIN","IKASUB","IKASYD","IKASZX","IKATPE","JEDJOG","JEDKNO","JEDMEL","JEDMFM","JEDMNL","JEDPDG","JEDPEN","JEDSUB","JHBKIX","JHBKTM","JHBMEL","JHBMRU","JHBOOL","JHBPEK","JHBPUS","JHBPVG","JHBSYD","JHBTPE","JHBWUH","JHBXIY","JOGKIX","JOGKTM","JOGMEL","JOGOOL","JOGPER","JOGPVG","JOGSYD","JOGTPE","KBRKIX","KBRKTM","KBRMEL","KBROOL","KBRPEK","KBRPER","KBRPUS","KBRPVG","KBRSYD","KBRTPE","KBRWUH","KBRXIY","KBVKIX","KBVKTM","KBVMEL","KBVOOL","KBVPEK","KBVPER","KBVPUS","KBVPVG","KBVSYD","KBVTPE","KBVWUH","KBVXIY","KCHKIX","KCHKTM","KCHMEL","KCHMRU","KCHOOL","KCHPEK","KCHPER","KCHPUS","KCHPVG","KCHSYD","KCHTPE","KCHWUH","KCHXIY","KHHMEL","KHHOOL","KHHPER","KHHSYD","KIXKNO","KIXKTM","KIXLBU","KIXLGK","KIXLOP","KIXLPQ","KIXMAA","KIXMEL","KIXMLE","KIXMRU","KIXMYY","KIXOOL","KIXPEN","KIXPER","KIXPNH","KIXREP","KIXRGN","KIXSBW","KIXSGN","KIXSIN","KIXSUB","KIXSYD","KIXTGG","KIXTRZ","KIXTWU","KLOMEL","KLOOOL","KLOSYD","KNOKTM","KNOMEL","KNOOOL","KNOPEK","KNOPER","KNOPUS","KNOPVG","KNOSYD","KNOTPE","KNOWUH","KNOXIY","KOSMEL","KOSOOL","KOSPEK","KOSSYD","KTMMEL","KTMMFM","KTMMYY","KTMPEN","KTMPER","KTMREP","KTMSGN","KTMSIN","KTMSUB","KTMSYD","KTMTGG","KTMTPE","KTMTWU","KTMURT","KWLPER","LBUPER","LBUTPE","LGKMEL","LGKOOL","LGKPEK","LGKPER","LGKPUS","LGKPVG","LGKSYD","LGKTPE","LGKWUH","LGKXIY","LOPOOL","LOPPEK","LOPPER","LOPPVG","LOPSYD","LOPTPE","LOPXIY","LPQMEL","LPQOOL","LPQPER","LPQTPE","MAAMEL","MAAMRU","MAAOOL","MAAPER","MAAPVG","MAASYD","MAATPE","MAAWUH","MELMFM","MELMLE","MELMNL","MELMRU","MELMYY","MELNRT","MELPEK","MELPEN","MELPNH","MELPUS","MELPVG","MELREP","MELRGN","MELSBW","MELSGN","MELSIN","MELSUB","MELSWA","MELSZX","MELTGG","MELTPE","MELTRZ","MELTWU","MELURT","MELUTP","MELVTE","MELVTZ","MELWUH","MELXIY","MFMOOL","MFMPER","MFMSYD","MLEOOL","MLEPEK","MLEPER","MLEPVG","MLESYD","MLETPE","MNLMRU","MNLOOL","MNLPER","MNLSYD","MRUOOL","MRUPEK","MRUPEN","MRUPER","MRUPVG","MRUSGN","MRUSIN","MRUSUB","MRUSYD","MRUSZX","MRUTPE","MRUXIY","MYYOOL","MYYPER","MYYPUS","MYYSYD","MYYXIY","NRTSYD","OOLPEK","OOLPEN","OOLPNH","OOLPUS","OOLPVG","OOLREP","OOLRGN","OOLSBW","OOLSDK","OOLSGN","OOLSIN","OOLSUB","OOLSZX","OOLTGG","OOLTPE","OOLTRZ","OOLTWU","OOLURT","OOLUTP","OOLVTE","OOLWUH","OOLXIY","PEKPEN","PEKPER","PEKREP","PEKRGN","PEKSBW","PEKSGN","PEKSIN","PEKSUB","PEKSYD","PEKTGG","PEKTRZ","PEKTWU","PENPER","PENPUS","PENPVG","PENSYD","PENTPE","PENWUH","PENXIY","PERPNH","PERPUS","PERPVG","PERREP","PERRGN","PERSBW","PERSDK","PERSGN","PERSIN","PERSUB","PERSWA","PERSZX","PERTGG","PERTPE","PERTRZ","PERTWU","PERUTP","PERVTE","PERVTZ","PERWUH","PERXIY","PNHSYD","PNHTPE","PNKTPE","PUSRGN","PUSSBW","PUSSGN","PUSSIN","PUSSUB","PUSSYD","PUSTRZ","PVGREP","PVGRGN","PVGSGN","PVGSIN","PVGSUB","PVGSYD","PVGTGG","PVGTWU","PVGURT","REPSYD","REPTPE","RGNSYD","RGNTPE","SBWSYD","SBWTPE","SBWWUH","SBWXIY","SDKSYD","SDKTPE","SGNSYD","SGNXIY","SINSYD","SINTPE","SINWUH","SINXIY","SRGTPE","SUBSYD","SUBTPE","SUBWUH","SUBXIY","SYDSZX","SYDTPE","SYDTRZ","SYDTWU","SYDVTE","SYDVTZ","SYDXIY","TGGTPE","TGGXIY","TPETRZ","TPETWU","TPEURT","TPEVTE","TRZWUH","TRZXIY","TWUWUH","TWUXIY","URTXIY"];
+
+    /* ── ROUTE COMBOBOX ── */
+    const routeInput    = document.getElementById('route_input');
+    const routeDropdown = document.getElementById('route_dropdown');
+    const routeValue    = document.getElementById('route_value');
+    const routeHint     = document.getElementById('route_hint');
+
+    function renderRoutes(filtered) {
+      routeDropdown.innerHTML = '';
+      if (!filtered.length) {
+        routeDropdown.innerHTML = '<p class="px-4 py-3 text-sm text-slate-400">Eşleşen rota bulunamadı</p>';
+        routeDropdown.classList.remove('hidden');
+        return;
+      }
+      filtered.slice(0, 80).forEach(r => {
+        const dep = r.slice(0, 3);
+        const arr = r.slice(3);
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-2 px-4 py-2.5 cursor-pointer hover:bg-ba-light text-sm font-mono transition-colors';
+        div.innerHTML = `<span class="font-semibold text-ba-navy">${dep}</span>
+          <svg class="w-3 h-3 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+          <span class="font-semibold text-ba-navy">${arr}</span>
+          <span class="ml-auto text-xs text-slate-400">${r}</span>`;
+        div.addEventListener('mousedown', () => selectRoute(r));
+        routeDropdown.appendChild(div);
+      });
+      if (filtered.length > 80) {
+        const note = document.createElement('p');
+        note.className = 'px-4 py-2 text-xs text-slate-400 border-t border-slate-100';
+        note.textContent = `+${filtered.length - 80} sonuç daha — aramayı daraltın`;
+        routeDropdown.appendChild(note);
+      }
+      routeDropdown.classList.remove('hidden');
+    }
+
+    function selectRoute(code) {
+      routeValue.value = code;
+      routeInput.value = code;
+      routeDropdown.classList.add('hidden');
+      routeInput.classList.remove('border-red-400');
+      routeHint.textContent = `${code.slice(0,3)} → ${code.slice(3)} seçildi ✓`;
+      routeHint.classList.remove('text-slate-400','text-red-500');
+      routeHint.classList.add('text-emerald-600','font-medium');
+    }
+
+    routeInput.addEventListener('input', () => {
+      const q = routeInput.value.toUpperCase().replace(/[^A-Z]/g, '');
+      routeInput.value = q;
+      routeValue.value = '';
+      routeHint.textContent = '799 rota arasında arayın';
+      routeHint.className = 'text-xs text-slate-400';
+      if (q.length === 0) { routeDropdown.classList.add('hidden'); return; }
+      const filtered = ALL_ROUTES.filter(r => r.includes(q));
+      renderRoutes(filtered);
+    });
+
+    routeInput.addEventListener('focus', () => {
+      if (routeInput.value.length > 0 && !routeValue.value) {
+        const q = routeInput.value.toUpperCase();
+        renderRoutes(ALL_ROUTES.filter(r => r.includes(q)));
+      }
+    });
+
+    document.addEventListener('click', e => {
+      if (!routeInput.contains(e.target) && !routeDropdown.contains(e.target)) {
+        routeDropdown.classList.add('hidden');
+      }
+    });
+
+    /* ── FORM SUBMIT ── */
+    document.getElementById('predictForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setLoading(true);
+      hideResult();
+      hideError();
+
+      const selectedRoute = document.getElementById('route_value').value;
+      if (!selectedRoute || selectedRoute.length !== 6) {
+        document.getElementById('route_input').classList.add('border-red-400');
+        document.getElementById('route_hint').textContent = 'Lütfen listeden geçerli bir rota seçin.';
+        document.getElementById('route_hint').className = 'text-xs text-red-500 font-medium';
+        showError('Lütfen listeden geçerli bir rota seçin (örn: LHRIST).');
+        setLoading(false);
+        return;
+      }
+
+      const payload = {
+        num_passengers:       parseInt(document.getElementById('num_passengers').value),
+        sales_channel:        document.getElementById('sales_channel').value,
+        trip_type:            document.getElementById('trip_type').value,
+        purchase_lead:        parseInt(document.getElementById('purchase_lead').value),
+        length_of_stay:       parseInt(document.getElementById('length_of_stay').value),
+        flight_hour:          parseInt(document.getElementById('flight_hour').value),
+        flight_day:           document.getElementById('flight_day').value,
+        flight_duration:      parseFloat(document.getElementById('flight_duration').value),
+        booking_origin:       document.getElementById('booking_origin').value,
+        route:                selectedRoute,
+        wants_extra_baggage:  document.getElementById('wants_extra_baggage').checked ? 1 : 0,
+        wants_preferred_seat: document.getElementById('wants_preferred_seat').checked ? 1 : 0,
+        wants_in_flight_meals: document.getElementById('wants_in_flight_meals').checked ? 1 : 0,
+      };
+
+      try {
+        const res = await fetch('http://127.0.0.1:8000/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `Sunucu hatası: ${res.status}`);
+        }
+
+        const data = await res.json();
+        showResult(data);
+      } catch (err) {
+        if (err.name === 'TypeError' && err.message.includes('fetch')) {
+          showError('Backend\'e bağlanılamadı. Lütfen http://127.0.0.1:8000 adresinde sunucunun çalıştığından emin olun.');
+        } else {
+          showError(err.message);
+        }
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    /* ── UI HELPERS ── */
+    function setLoading(on) {
+      const btn  = document.getElementById('submitBtn');
+      const icon = document.getElementById('btnIcon');
+      const txt  = document.getElementById('btnText');
+
+      if (on) {
+        btn.disabled = true;
+        btn.classList.add('opacity-75');
+        icon.outerHTML = `<svg id="btnIcon" class="w-5 h-5 spinner" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+        </svg>`;
+        txt.textContent = 'Hesaplanıyor…';
+      } else {
+        btn.disabled = false;
+        btn.classList.remove('opacity-75');
+        document.getElementById('btnIcon').outerHTML = `<svg id="btnIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>`;
+        txt.textContent = 'Tahmin Et';
+      }
+    }
+
+    function showError(msg) {
+      document.getElementById('errorMsg').textContent = msg;
+      document.getElementById('errorBox').classList.remove('hidden');
+      document.getElementById('errorBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function hideError() { document.getElementById('errorBox').classList.add('hidden'); }
+
+    function showResult(data) {
+      const complete = data.booking_complete === 1;
+      const prob     = Math.round((data.probability ?? 0) * 100);
+
+      // header
+      const header = document.getElementById('resultHeader');
+      const icon   = document.getElementById('resultIcon');
+      const title  = document.getElementById('resultTitle');
+      const msg    = document.getElementById('resultMsg');
+
+      if (complete) {
+        header.className = 'px-6 py-5 flex items-center gap-4 bg-emerald-50';
+        icon.className   = 'w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0 bg-emerald-100';
+        icon.textContent = '✅';
+        title.textContent = 'Rezervasyon Tamamlanacak';
+        title.className  = 'text-xl font-bold text-emerald-700 leading-tight';
+      } else {
+        header.className = 'px-6 py-5 flex items-center gap-4 bg-red-50';
+        icon.className   = 'w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0 bg-red-100';
+        icon.textContent = '❌';
+        title.textContent = 'Rezervasyon Tamamlanmayacak';
+        title.className  = 'text-xl font-bold text-red-700 leading-tight';
+      }
+      msg.textContent = data.message ?? '';
+
+      // prob bar
+      document.getElementById('probText').textContent = `%${prob}`;
+      const bar = document.getElementById('probBar');
+      bar.style.width = `${prob}%`;
+      bar.className = `fill-bar h-4 rounded-full ${
+        prob >= 70 ? 'bg-emerald-500' : prob >= 40 ? 'bg-yellow-400' : 'bg-red-400'
+      }`;
+
+      // stats
+      document.getElementById('statDecision').textContent  = complete ? '✓ Evet' : '✗ Hayır';
+      document.getElementById('statDecision').className    = `text-sm font-bold mt-1 ${complete ? 'text-emerald-600' : 'text-red-500'}`;
+      document.getElementById('statProb').textContent      = `%${prob}`;
+      const confLabel = prob >= 70 || prob <= 30 ? 'Yüksek' : prob >= 55 || prob <= 45 ? 'Orta' : 'Düşük';
+      const confColor = prob >= 70 || prob <= 30 ? 'text-emerald-600' : 'text-yellow-600';
+      document.getElementById('statConf').textContent      = confLabel;
+      document.getElementById('statConf').className        = `text-sm font-bold mt-1 ${confColor}`;
+
+      const card = document.getElementById('resultCard');
+      card.classList.remove('hidden');
+      card.style.animation = 'none';
+      void card.offsetWidth; // reflow
+      card.style.animation = '';
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function hideResult() { document.getElementById('resultCard').classList.add('hidden'); }
+
+    /* After successful prediction, refresh dashboard data */
+    const origShowResult = showResult;
+    showResult = function(data) {
+      origShowResult(data);
+      if (typeof refreshMetrics === 'function') { refreshMetrics(); refreshPredictions(); }
+    };
+  </script>
+  <script src="/static/dashboard.js"></script>
+</body>
+</html>
