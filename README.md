@@ -1,4 +1,4 @@
-<![CDATA[# ✈️ British Airways — Booking Completion Prediction
+# ✈️ British Airways — Booking Completion Prediction
 
 <div align="center">
 
@@ -204,4 +204,3 @@ curl -X POST http://localhost:8000/predict \
 ## 📄 License
 
 This project was developed for educational purposes.
-]]>
