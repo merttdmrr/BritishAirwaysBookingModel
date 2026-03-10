@@ -189,7 +189,7 @@ curl -X POST http://localhost:8000/predict \
 | **Backend** | [FastAPI](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/) |
 | **ML Model** | [scikit-learn](https://scikit-learn.org/) RandomForestClassifier |
 | **Data Processing** | [pandas](https://pandas.pydata.org/), [NumPy](https://numpy.org/) |
-| **Feature Encoding** | [category_encoders](https://contrib.scikit-learn.org/category_encoders/) (BinaryEncoder) |
+| **Feature Encoding** | [category_encoders](https://contrib.scikit-learn.org/category_encoders/) (Label + Target Encoding) |
 | **Frontend** | HTML5, [Tailwind CSS](https://tailwindcss.com/) (CDN), [Chart.js](https://www.chartjs.org/) 4.4 |
 | **Templating** | [Jinja2](https://jinja.palletsprojects.com/) |
 
